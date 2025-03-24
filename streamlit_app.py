@@ -848,17 +848,22 @@ def create_bar_only_chart(title, percentiles, values, key_percentiles=None):
     if title == "Lp(a)":
         # Create Lp(a) chart without patient marker
         fig = create_lpa_chart(title, lpa_percentiles, lpa_values, 0)
-        # Hide the patient marker
-        fig.data = [trace for trace in fig.data if 'Patient' not in trace.name]
-        # Remove all shapes (patient line)
-        fig.layout.shapes = []
     else:
         # Create standard chart without patient marker
         fig = create_standard_chart(title, percentiles, values, values[0])
-        # Hide the patient marker
-        fig.data = [trace for trace in fig.data if 'Patient' not in trace.name]
-        # Remove all shapes (patient line)
-        fig.layout.shapes = []
+    
+    # Safely filter out traces related to patient markers
+    new_data = []
+    for trace in fig.data:
+        # Only include traces that don't have 'Patient' in their name
+        # Use hasattr to safely check if the trace has a name attribute
+        if not hasattr(trace, 'name') or trace.name is None or 'Patient' not in trace.name:
+            new_data.append(trace)
+    
+    fig.data = new_data
+    
+    # Remove all shapes (patient line)
+    fig.layout.shapes = []
     
     return fig
 
