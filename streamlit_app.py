@@ -771,129 +771,367 @@ with tab3:
 # Replace the current export section with this simplified version
 # that works on Streamlit Cloud
 
+# Add this code to your Streamlit app for direct PNG export
 import io
 import base64
-from PIL import Image
-import plotly.graph_objects as go
+import plotly.io as pio
 
-# Add a section for exporting charts
+# Add export section
 st.markdown("---")
 st.header("Export Charts")
-st.write("Use these buttons to download the charts as interactive HTML files.")
 
-# Function to create an HTML download link for a Plotly figure
-def get_plotly_html_download_link(fig, filename, text, title=None):
-    """
-    Generates a link to download a Plotly figure as an HTML file
-    """
-    # Add title if provided
-    if title:
-        fig.update_layout(
-            title={
-                'text': title,
-                'font': {'size': 24, 'family': 'Cormorant Garamond', 'color': '#2c3e50'},
-                'x': 0.5,
-                'xanchor': 'center',
-                'y': 0.95
-            }
-        )
+# Create a simplified version of the charts for export
+def create_export_chart(title, percentiles, values, include_patient=False, patient_value=None):
+    """Creates a simplified chart optimized for export with transparent background"""
+    # Create a new figure
+    fig = go.Figure()
     
-    # Convert the figure to HTML
-    buffer = io.StringIO()
-    fig.write_html(buffer)
-    html_bytes = buffer.getvalue().encode()
+    # Add a range slider background
+    fig.add_trace(go.Scatter(
+        x=[0, 100],
+        y=[0, 0],
+        mode='lines',
+        line=dict(color='lightgrey', width=10),
+        hoverinfo='none',
+        showlegend=False
+    ))
     
-    # Encode as base64
-    b64 = base64.b64encode(html_bytes).decode()
-    
-    # Create the download link
-    href = f'<a href="data:text/html;base64,{b64}" download="{filename}.html">{text}</a>'
-    return href
-
-# Create a row of download buttons for charts with patient markers
-col1, col2, col3, col4 = st.columns(4)
-
-with col1:
-    # Re-create ApoB figure
-    apoB_fig_export = create_standard_chart("ApoB", percentiles, apoB_values, apoB)
-    apoB_link = get_plotly_html_download_link(apoB_fig_export, "ApoB_Chart", "Download ApoB Chart", "ApoB (mg/dL)")
-    st.markdown(apoB_link, unsafe_allow_html=True)
-
-with col2:
-    nonHDL_fig_export = create_standard_chart("Non-HDL-C", percentiles, nonHDL_values, nonHDL)
-    nonHDL_link = get_plotly_html_download_link(nonHDL_fig_export, "NonHDL_Chart", "Download Non-HDL Chart", "Non-HDL-C (mg/dL)")
-    st.markdown(nonHDL_link, unsafe_allow_html=True)
-
-with col3:
-    LDL_fig_export = create_standard_chart("LDL-C", percentiles, LDL_values, LDL)
-    LDL_link = get_plotly_html_download_link(LDL_fig_export, "LDL_Chart", "Download LDL Chart", "LDL-C (mg/dL)")
-    st.markdown(LDL_link, unsafe_allow_html=True)
-
-with col4:
-    # Use the custom spacing for Lp(a)
-    lpa_fig_export = create_lpa_chart("Lp(a)", lpa_percentiles, lpa_values, lpa)
-    lpa_link = get_plotly_html_download_link(lpa_fig_export, "Lpa_Chart", "Download Lp(a) Chart", "Lp(a) (mg/dL)")
-    st.markdown(lpa_link, unsafe_allow_html=True)
-
-# Create a row of download buttons for spectrum bars only
-st.write("Or download the spectrum bars only (without patient markers):")
-
-col1, col2, col3, col4 = st.columns(4)
-
-# Function to create a chart without patient markers
-def create_bar_only_chart(title, percentiles, values, key_percentiles=None):
-    """
-    Creates a chart with just the colored spectrum bars, no patient markers
-    """
+    # Define display percentiles
     if title == "Lp(a)":
-        # Create Lp(a) chart without patient marker
-        fig = create_lpa_chart(title, lpa_percentiles, lpa_values, 0)
+        key_percentiles = [0, 75, 80, 90, 95, 98, 100]
+        # Get key values
+        key_values = []
+        for perc in key_percentiles:
+            if perc in lpa_percentiles:
+                idx = lpa_percentiles.index(perc)
+                key_values.append(lpa_values[idx])
+            else:
+                # Handle 0 and 100 cases
+                if perc == 0:
+                    key_values.append(0)
+                elif perc == 100:
+                    key_values.append(lpa_values[-1] * 1.1)
+                else:
+                    key_values.append(np.interp(perc, lpa_percentiles, lpa_values))
+        
+        # Custom mapping for Lp(a)
+        def map_percentile(p):
+            if p <= 75:
+                return p * (40/75)
+            elif p <= 95:
+                return 40 + (p - 75) * (30/20)
+            else:
+                return 70 + (p - 95) * (30/5)
+        
+        # Add green segment for 0-75
+        fig.add_trace(go.Scatter(
+            x=[map_percentile(0), map_percentile(75)],
+            y=[0, 0],
+            mode='lines',
+            line=dict(color='rgba(50, 200, 50, 1)', width=20),
+            hoverinfo='none',
+            showlegend=False
+        ))
+        
+        # Add colored segments for higher percentiles
+        for i in range(1, len(key_percentiles) - 1):
+            start_p = key_percentiles[i]
+            end_p = key_percentiles[i+1]
+            start_pos = map_percentile(start_p)
+            end_pos = map_percentile(end_p)
+            
+            # Color based on percentile
+            if start_p == 75:
+                color = 'rgba(220, 220, 50, 1)'  # Yellow
+            elif start_p == 80:
+                color = 'rgba(230, 180, 50, 1)'  # Light orange
+            elif start_p == 90:
+                color = 'rgba(230, 130, 50, 1)'  # Orange
+            elif start_p == 95:
+                color = 'rgba(230, 90, 50, 1)'   # Dark orange
+            else:
+                color = 'rgba(220, 50, 50, 1)'   # Red
+            
+            fig.add_trace(go.Scatter(
+                x=[start_pos, end_pos],
+                y=[0, 0],
+                mode='lines',
+                line=dict(color=color, width=20),
+                hoverinfo='none',
+                showlegend=False
+            ))
+        
+        # Add percentile and value labels
+        for p, v in zip(key_percentiles[1:-1], key_values[1:-1]):
+            pos = map_percentile(p)
+            suffix = get_ordinal_suffix(p)
+            
+            # Add percentile label below
+            fig.add_annotation(
+                x=pos, y=-0.8,
+                text=f"{p}<sup>{suffix}</sup>",
+                showarrow=False,
+                font=dict(size=18, color="#333333", family="Arial"),
+            )
+            
+            # Add value label above
+            fig.add_annotation(
+                x=pos, y=0.7,
+                text=f"{int(round(v))}",
+                showarrow=False,
+                font=dict(size=16, color="#000000", family="Arial"),
+            )
+        
+        # Add patient marker if requested
+        if include_patient and patient_value is not None:
+            patient_percentile = get_percentile(patient_value, lpa_values, lpa_percentiles)
+            patient_pos = map_percentile(patient_percentile)
+            
+            # Add vertical line
+            fig.add_shape(
+                type="line", x0=patient_pos, x1=patient_pos, y0=-0.4, y1=0.4,
+                line=dict(color="#000000", width=4, dash="solid")
+            )
+            
+            # Add triangles at ends
+            fig.add_trace(go.Scatter(
+                x=[patient_pos], y=[0.4],
+                mode="markers",
+                marker=dict(size=12, symbol="triangle-down", color="#000000"),
+                showlegend=False
+            ))
+            
+            fig.add_trace(go.Scatter(
+                x=[patient_pos], y=[-0.4],
+                mode="markers",
+                marker=dict(size=12, symbol="triangle-up", color="#000000"),
+                showlegend=False
+            ))
     else:
-        # Create standard chart without patient marker
-        fig = create_standard_chart(title, percentiles, values, values[0])
+        # Standard lipid chart
+        key_percentiles = [0, 5, 10, 20, 50, 75, 100]
+        
+        # Get key values for the specified percentiles
+        key_values = np.interp(key_percentiles, 
+                              [min(percentiles), *percentiles, max(percentiles)], 
+                              [min(values), *values, max(values)])
+        
+        # Standard color scale
+        colorscale = [
+            [0, 'rgba(50, 200, 50, 1)'],      # Green
+            [0.1, 'rgba(150, 200, 50, 1)'],   # Light green
+            [0.2, 'rgba(220, 220, 50, 1)'],   # Yellow
+            [0.35, 'rgba(230, 180, 50, 1)'],  # Light orange
+            [0.5, 'rgba(230, 130, 50, 1)'],   # Orange
+            [0.75, 'rgba(230, 90, 50, 1)'],   # Dark orange
+            [0.85, 'rgba(220, 50, 50, 1)']    # Red
+        ]
+        
+        # Add colored segments
+        for i in range(len(key_percentiles) - 1):
+            start_percentile = key_percentiles[i]
+            end_percentile = key_percentiles[i+1]
+            
+            # Find color
+            color_pos = start_percentile / 100
+            if color_pos <= colorscale[0][0]:
+                color = colorscale[0][1]
+            elif color_pos >= colorscale[-1][0]:
+                color = colorscale[-1][1]
+            else:
+                for j in range(len(colorscale)-1):
+                    if color_pos >= colorscale[j][0] and color_pos <= colorscale[j+1][0]:
+                        t = (color_pos - colorscale[j][0]) / (colorscale[j+1][0] - colorscale[j][0])
+                        # Parse rgba strings
+                        c1 = [int(x) for x in colorscale[j][1].strip('rgba()').split(',')[0:3]]
+                        c2 = [int(x) for x in colorscale[j+1][1].strip('rgba()').split(',')[0:3]]
+                        r = int(c1[0] + t * (c2[0] - c1[0]))
+                        g = int(c1[1] + t * (c2[1] - c1[1]))
+                        b = int(c1[2] + t * (c2[2] - c1[2]))
+                        color = f'rgba({r}, {g}, {b}, 1)'
+                        break
+            
+            # Add segment
+            fig.add_trace(go.Scatter(
+                x=[start_percentile, end_percentile],
+                y=[0, 0],
+                mode='lines',
+                line=dict(color=color, width=20),
+                hoverinfo='none',
+                showlegend=False
+            ))
+        
+        # Add percentile and value labels
+        for p, v in zip(key_percentiles[1:-1], key_values[1:-1]):
+            suffix = get_ordinal_suffix(p)
+            
+            # Add percentile label below
+            fig.add_annotation(
+                x=p, y=-0.8,
+                text=f"{p}<sup>{suffix}</sup>",
+                showarrow=False,
+                font=dict(size=18, color="#333333", family="Arial"),
+            )
+            
+            # Add value label above
+            fig.add_annotation(
+                x=p, y=0.7,
+                text=f"{int(round(v))}",
+                showarrow=False,
+                font=dict(size=16, color="#000000", family="Arial"),
+            )
+        
+        # Add patient marker if requested
+        if include_patient and patient_value is not None:
+            patient_percentile = get_percentile(patient_value, percentiles, values)
+            
+            # Add vertical line
+            fig.add_shape(
+                type="line", x0=patient_percentile, x1=patient_percentile, y0=-0.4, y1=0.4,
+                line=dict(color="#000000", width=4, dash="solid")
+            )
+            
+            # Add triangles at ends
+            fig.add_trace(go.Scatter(
+                x=[patient_percentile], y=[0.4],
+                mode="markers",
+                marker=dict(size=12, symbol="triangle-down", color="#000000"),
+                showlegend=False
+            ))
+            
+            fig.add_trace(go.Scatter(
+                x=[patient_percentile], y=[-0.4],
+                mode="markers",
+                marker=dict(size=12, symbol="triangle-up", color="#000000"),
+                showlegend=False
+            ))
     
-    # Safely filter out traces related to patient markers
-    new_data = []
-    for trace in fig.data:
-        # Only include traces that don't have 'Patient' in their name
-        # Use hasattr to safely check if the trace has a name attribute
-        if not hasattr(trace, 'name') or trace.name is None or 'Patient' not in trace.name:
-            new_data.append(trace)
-    
-    fig.data = new_data
-    
-    # Remove all shapes (patient line)
-    fig.layout.shapes = []
+    # Add title
+    fig.update_layout(
+        title={
+            'text': f"{title} (mg/dL)",
+            'font': {'size': 22, 'family': 'Arial', 'color': '#2c3e50'},
+            'x': 0.5,
+            'xanchor': 'center',
+            'y': 0.95
+        },
+        height=200,
+        margin=dict(l=40, r=40, t=50, b=60),
+        xaxis=dict(
+            range=[-5, 105],
+            showticklabels=False,
+            showgrid=False,
+            zeroline=False,
+        ),
+        yaxis=dict(
+            range=[-0.8, 0.8],
+            showticklabels=False,
+            showgrid=False,
+            zeroline=False,
+        ),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        showlegend=False,
+    )
     
     return fig
 
+# Install kaleido for PNG export
+# This requires kaleido in your requirements.txt
+# Alternatively, you can use a pre-rendered base64 image if kaleido won't work
+
+st.write("Download individual charts as PNG images with transparent backgrounds:")
+
+# Define a function to convert figure to base64-encoded PNG with transparent background
+def fig_to_base64(fig):
+    try:
+        img_bytes = pio.to_image(fig, format="png", scale=3, width=1000, height=200, engine="kaleido")
+        img_base64 = base64.b64encode(img_bytes).decode('utf-8')
+        return img_base64
+    except Exception as e:
+        st.error(f"Error generating image: {e}")
+        return None
+
+# Create download buttons for each chart
+col1, col2 = st.columns(2)
 with col1:
-    apoB_bar_fig = create_bar_only_chart("ApoB", percentiles, apoB_values)
-    apoB_bar_link = get_plotly_html_download_link(apoB_bar_fig, "ApoB_Bar_Only", "Download ApoB Bar Only", "ApoB (mg/dL)")
-    st.markdown(apoB_bar_link, unsafe_allow_html=True)
+    apob_fig = create_export_chart("ApoB", percentiles, apoB_values)
+    apob_base64 = fig_to_base64(apob_fig)
+    if apob_base64:
+        st.markdown(f'<a href="data:image/png;base64,{apob_base64}" download="ApoB_Chart.png"><button style="padding: 6px 12px; background-color: #4CAF50; color: white; border: none; border-radius: 4px;">Download ApoB Chart</button></a>', unsafe_allow_html=True)
+
+    ldl_fig = create_export_chart("LDL-C", percentiles, LDL_values)
+    ldl_base64 = fig_to_base64(ldl_fig)
+    if ldl_base64:
+        st.markdown(f'<a href="data:image/png;base64,{ldl_base64}" download="LDL_Chart.png"><button style="padding: 6px 12px; background-color: #4CAF50; color: white; border: none; border-radius: 4px;">Download LDL Chart</button></a>', unsafe_allow_html=True)
 
 with col2:
-    nonHDL_bar_fig = create_bar_only_chart("Non-HDL-C", percentiles, nonHDL_values)
-    nonHDL_bar_link = get_plotly_html_download_link(nonHDL_bar_fig, "NonHDL_Bar_Only", "Download Non-HDL Bar Only", "Non-HDL-C (mg/dL)")
-    st.markdown(nonHDL_bar_link, unsafe_allow_html=True)
+    nonhdl_fig = create_export_chart("Non-HDL-C", percentiles, nonHDL_values)
+    nonhdl_base64 = fig_to_base64(nonhdl_fig)
+    if nonhdl_base64:
+        st.markdown(f'<a href="data:image/png;base64,{nonhdl_base64}" download="NonHDL_Chart.png"><button style="padding: 6px 12px; background-color: #4CAF50; color: white; border: none; border-radius: 4px;">Download Non-HDL Chart</button></a>', unsafe_allow_html=True)
 
-with col3:
-    LDL_bar_fig = create_bar_only_chart("LDL-C", percentiles, LDL_values)
-    LDL_bar_link = get_plotly_html_download_link(LDL_bar_fig, "LDL_Bar_Only", "Download LDL Bar Only", "LDL-C (mg/dL)")
-    st.markdown(LDL_bar_link, unsafe_allow_html=True)
+    lpa_fig = create_export_chart("Lp(a)", lpa_percentiles, lpa_values)
+    lpa_base64 = fig_to_base64(lpa_fig)
+    if lpa_base64:
+        st.markdown(f'<a href="data:image/png;base64,{lpa_base64}" download="Lpa_Chart.png"><button style="padding: 6px 12px; background-color: #4CAF50; color: white; border: none; border-radius: 4px;">Download Lp(a) Chart</button></a>', unsafe_allow_html=True)
 
-with col4:
-    lpa_bar_fig = create_bar_only_chart("Lp(a)", lpa_percentiles, lpa_values)
-    lpa_bar_link = get_plotly_html_download_link(lpa_bar_fig, "Lpa_Bar_Only", "Download Lp(a) Bar Only", "Lp(a) (mg/dL)")
-    st.markdown(lpa_bar_link, unsafe_allow_html=True)
+# All charts in one download
+st.write("Download all charts in a single image:")
+    
+# Handle potential errors with a fallback
+try:
+    # Create all four charts
+    charts = [
+        create_export_chart("ApoB", percentiles, apoB_values),
+        create_export_chart("Non-HDL-C", percentiles, nonHDL_values),
+        create_export_chart("LDL-C", percentiles, LDL_values),
+        create_export_chart("Lp(a)", lpa_percentiles, lpa_values)
+    ]
+    
+    # Set fixed height for each chart
+    for fig in charts:
+        fig.update_layout(height=200, width=1000)
+    
+    # Convert each to PNG and combine using HTML
+    all_base64s = []
+    for fig in charts:
+        img_b64 = fig_to_base64(fig)
+        if img_b64:
+            all_base64s.append(img_b64)
+    
+    if len(all_base64s) == 4:
+        # Create HTML with all images
+        html = """
+        <html>
+        <body style="background-color: transparent;">
+        """
+        for b64 in all_base64s:
+            html += f'<div><img src="data:image/png;base64,{b64}" style="width: 100%; height: auto;"></div>'
+        html += """
+        </body>
+        </html>
+        """
+        
+        # Encode HTML as base64
+        html_b64 = base64.b64encode(html.encode()).decode()
+        
+        # Create download button
+        st.markdown(f'<a href="data:text/html;base64,{html_b64}" download="All_Lipid_Charts.html"><button style="padding: 6px 12px; background-color: #4CAF50; color: white; border: none; border-radius: 4px;">Download All Charts as HTML</button></a>', unsafe_allow_html=True)
+except Exception as e:
+    st.error(f"An error occurred when generating combined charts: {e}")
+    
+# Add a fallback option
+st.markdown("""
+---
+### Alternative Export Options
 
-# Alternative approach for image download using Streamlit's download button
-st.markdown("---")
-st.header("Alternative Export Option")
-st.write("You can also take a screenshot of the charts directly from your browser for maximum quality.")
-st.write("1. Press the 'View fullscreen' button at the top-right of each chart")
-st.write("2. Use your browser's screenshot tool or press Print Screen")
-st.write("3. Paste the screenshot into your document or presentation software")
+If you encounter any issues with the download buttons above, you can:
+
+1. **Take screenshots:** Use your browser's screenshot tool or press Print Screen
+2. **Use the interactive charts:** The charts on this page can be saved as images by clicking the camera icon in the top-right of each chart
+3. **Export to PDF:** Print this page to PDF with a transparent background setting enabled
+""")
 
 # Disclaimer
 st.markdown("""
