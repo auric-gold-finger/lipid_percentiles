@@ -768,155 +768,77 @@ with tab3:
     Interpolated values may be used to estimate percentiles between the reference points shown in the tables above.
     """)
 
-# Add this code to your Streamlit app to enable transparent PNG export
+# Replace the current export section with this simplified version
+# that works on Streamlit Cloud
 
 import io
 import base64
 from PIL import Image
-import plotly.io as pio
+import plotly.graph_objects as go
 
 # Add a section for exporting charts
 st.markdown("---")
 st.header("Export Charts")
-st.write("Click the buttons below to download individual charts as transparent PNGs.")
+st.write("Use these buttons to download the charts as interactive HTML files.")
 
-# Function to convert a Plotly figure to a transparent PNG and create a download link
-def get_image_download_link(fig, filename, text, title=None):
+# Function to create an HTML download link for a Plotly figure
+def get_plotly_html_download_link(fig, filename, text, title=None):
     """
-    Generates a link to download a Plotly figure as a transparent PNG
+    Generates a link to download a Plotly figure as an HTML file
     """
-    # Set the figure's background to transparent and add title if provided
-    layout_updates = {
-        'paper_bgcolor': 'rgba(0,0,0,0)',
-        'plot_bgcolor': 'rgba(0,0,0,0)'
-    }
-    
     # Add title if provided
     if title:
-        layout_updates['title'] = {
-            'text': title,
-            'font': {'size': 24, 'family': 'Cormorant Garamond', 'color': '#2c3e50'},
-            'x': 0.5,
-            'xanchor': 'center',
-            'y': 0.95
-        }
-        
-    # Update marker settings to fix the white border issue
-    for data in fig.data:
-        if hasattr(data, 'marker') and data.marker and hasattr(data.marker, 'line'):
-            data.marker.line.color = 'rgba(0,0,0,0)'  # Make marker borders transparent
-    
-    fig.update_layout(**layout_updates)
-    
-    # Convert the figure to an image with transparent background
-    # Higher resolution with scale=6 for better quality
-    img_bytes = pio.to_image(fig, format="png", scale=6, width=1200, height=280)
-    
-    # Open the image with PIL to ensure transparency is preserved
-    img = Image.open(io.BytesIO(img_bytes))
-    
-    # Convert back to bytes for download
-    buffered = io.BytesIO()
-    img.save(buffered, format="PNG")
-    img_str = base64.b64encode(buffered.getvalue()).decode()
-    
-    # Create the download link
-    href = f'<a href="data:image/png;base64,{img_str}" download="{filename}.png">{text}</a>'
-    return href
-
-# Create a row of download buttons
-col1, col2, col3, col4 = st.columns(4)
-
-with col1:
-    # Re-create ApoB figure to ensure we have a fresh copy
-    apoB_fig_export = create_standard_chart("ApoB", percentiles, apoB_values, apoB)
-    apoB_link = get_image_download_link(apoB_fig_export, "ApoB_Spectrum", "Download ApoB Chart", "ApoB (mg/dL)")
-    st.markdown(apoB_link, unsafe_allow_html=True)
-
-with col2:
-    nonHDL_fig_export = create_standard_chart("Non-HDL-C", percentiles, nonHDL_values, nonHDL)
-    nonHDL_link = get_image_download_link(nonHDL_fig_export, "NonHDL_Spectrum", "Download Non-HDL Chart", "Non-HDL-C (mg/dL)")
-    st.markdown(nonHDL_link, unsafe_allow_html=True)
-
-with col3:
-    LDL_fig_export = create_standard_chart("LDL-C", percentiles, LDL_values, LDL)
-    LDL_link = get_image_download_link(LDL_fig_export, "LDL_Spectrum", "Download LDL Chart", "LDL-C (mg/dL)")
-    st.markdown(LDL_link, unsafe_allow_html=True)
-
-with col4:
-    # Use the new custom spacing for Lp(a)
-    lpa_fig_export = create_lpa_chart("Lp(a)", lpa_percentiles, lpa_values, lpa)
-    lpa_link = get_image_download_link(lpa_fig_export, "Lpa_Spectrum", "Download Lp(a) Chart", "Lp(a) (mg/dL)")
-    st.markdown(lpa_link, unsafe_allow_html=True)
-
-# Option to download all charts in a single image
-st.write("Or download all charts at once:")
-
-# Function to create a combined image of all charts
-def create_combined_chart_image():
-    """
-    Creates a single image containing all four charts stacked vertically
-    """
-    # Create fresh figures
-    apoB_fig = create_standard_chart("ApoB", percentiles, apoB_values, apoB)
-    nonHDL_fig = create_standard_chart("Non-HDL-C", percentiles, nonHDL_values, nonHDL)
-    LDL_fig = create_standard_chart("LDL-C", percentiles, LDL_values, LDL)
-    lpa_fig = create_lpa_chart("Lp(a)", lpa_percentiles, lpa_values, lpa)
-    
-    # Fix marker border issues
-    for fig in [apoB_fig, nonHDL_fig, LDL_fig, lpa_fig]:
-        for data in fig.data:
-            if hasattr(data, 'marker') and data.marker and hasattr(data.marker, 'line'):
-                data.marker.line.color = 'rgba(0,0,0,0)'  # Make marker borders transparent
-    
-    # Add titles to each figure
-    titles = ["ApoB (mg/dL)", "Non-HDL-C (mg/dL)", "LDL-C (mg/dL)", "Lp(a) (mg/dL)"]
-    figures = [apoB_fig, nonHDL_fig, LDL_fig, lpa_fig]
-    
-    for fig, title in zip(figures, titles):
         fig.update_layout(
             title={
                 'text': title,
                 'font': {'size': 24, 'family': 'Cormorant Garamond', 'color': '#2c3e50'},
                 'x': 0.5,
                 'xanchor': 'center',
-                'y': 0.93
-            },
-            margin=dict(l=40, r=40, t=50, b=50),  # Increased top margin for title
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)'
+                'y': 0.95
+            }
         )
     
-    # Convert each figure to an image with higher resolution
-    apoB_img = Image.open(io.BytesIO(pio.to_image(apoB_fig, format="png", scale=6, width=1200, height=200)))
-    nonHDL_img = Image.open(io.BytesIO(pio.to_image(nonHDL_fig, format="png", scale=6, width=1200, height=200)))
-    LDL_img = Image.open(io.BytesIO(pio.to_image(LDL_fig, format="png", scale=6, width=1200, height=200)))
-    lpa_img = Image.open(io.BytesIO(pio.to_image(lpa_fig, format="png", scale=6, width=1200, height=200)))
+    # Convert the figure to HTML
+    buffer = io.StringIO()
+    fig.write_html(buffer)
+    html_bytes = buffer.getvalue().encode()
     
-    # Create a new image to hold all charts
-    total_height = apoB_img.height + nonHDL_img.height + LDL_img.height + lpa_img.height
-    combined_img = Image.new('RGBA', (apoB_img.width, total_height), (255, 255, 255, 0))
+    # Encode as base64
+    b64 = base64.b64encode(html_bytes).decode()
     
-    # Paste each chart into the combined image
-    y_offset = 0
-    for img in [apoB_img, nonHDL_img, LDL_img, lpa_img]:
-        combined_img.paste(img, (0, y_offset), img)
-        y_offset += img.height
-    
-    # Convert to bytes for download
-    buffered = io.BytesIO()
-    combined_img.save(buffered, format="PNG")
-    img_str = base64.b64encode(buffered.getvalue()).decode()
-    
-    return img_str
+    # Create the download link
+    href = f'<a href="data:text/html;base64,{b64}" download="{filename}.html">{text}</a>'
+    return href
 
-# Create combined download button
-combined_img_str = create_combined_chart_image()
-combined_link = f'<a href="data:image/png;base64,{combined_img_str}" download="All_Lipid_Spectrums.png"><button style="padding: 6px 12px; background-color: #4CAF50; color: white; border: none; border-radius: 4px;">Download All Charts</button></a>'
-st.markdown(combined_link, unsafe_allow_html=True)
+# Create a row of download buttons for charts with patient markers
+col1, col2, col3, col4 = st.columns(4)
 
-# Option to download just the spectrum bars without patient markers
+with col1:
+    # Re-create ApoB figure
+    apoB_fig_export = create_standard_chart("ApoB", percentiles, apoB_values, apoB)
+    apoB_link = get_plotly_html_download_link(apoB_fig_export, "ApoB_Chart", "Download ApoB Chart", "ApoB (mg/dL)")
+    st.markdown(apoB_link, unsafe_allow_html=True)
+
+with col2:
+    nonHDL_fig_export = create_standard_chart("Non-HDL-C", percentiles, nonHDL_values, nonHDL)
+    nonHDL_link = get_plotly_html_download_link(nonHDL_fig_export, "NonHDL_Chart", "Download Non-HDL Chart", "Non-HDL-C (mg/dL)")
+    st.markdown(nonHDL_link, unsafe_allow_html=True)
+
+with col3:
+    LDL_fig_export = create_standard_chart("LDL-C", percentiles, LDL_values, LDL)
+    LDL_link = get_plotly_html_download_link(LDL_fig_export, "LDL_Chart", "Download LDL Chart", "LDL-C (mg/dL)")
+    st.markdown(LDL_link, unsafe_allow_html=True)
+
+with col4:
+    # Use the custom spacing for Lp(a)
+    lpa_fig_export = create_lpa_chart("Lp(a)", lpa_percentiles, lpa_values, lpa)
+    lpa_link = get_plotly_html_download_link(lpa_fig_export, "Lpa_Chart", "Download Lp(a) Chart", "Lp(a) (mg/dL)")
+    st.markdown(lpa_link, unsafe_allow_html=True)
+
+# Create a row of download buttons for spectrum bars only
 st.write("Or download the spectrum bars only (without patient markers):")
+
+col1, col2, col3, col4 = st.columns(4)
 
 # Function to create a chart without patient markers
 def create_bar_only_chart(title, percentiles, values, key_percentiles=None):
@@ -940,91 +862,33 @@ def create_bar_only_chart(title, percentiles, values, key_percentiles=None):
     
     return fig
 
-# Create download buttons for spectrum bars only
-col1, col2, col3, col4 = st.columns(4)
-
 with col1:
     apoB_bar_fig = create_bar_only_chart("ApoB", percentiles, apoB_values)
-    apoB_bar_link = get_image_download_link(apoB_bar_fig, "ApoB_Bar_Only", "Download ApoB Bar Only")
+    apoB_bar_link = get_plotly_html_download_link(apoB_bar_fig, "ApoB_Bar_Only", "Download ApoB Bar Only", "ApoB (mg/dL)")
     st.markdown(apoB_bar_link, unsafe_allow_html=True)
 
 with col2:
     nonHDL_bar_fig = create_bar_only_chart("Non-HDL-C", percentiles, nonHDL_values)
-    nonHDL_bar_link = get_image_download_link(nonHDL_bar_fig, "NonHDL_Bar_Only", "Download Non-HDL Bar Only")
+    nonHDL_bar_link = get_plotly_html_download_link(nonHDL_bar_fig, "NonHDL_Bar_Only", "Download Non-HDL Bar Only", "Non-HDL-C (mg/dL)")
     st.markdown(nonHDL_bar_link, unsafe_allow_html=True)
 
 with col3:
     LDL_bar_fig = create_bar_only_chart("LDL-C", percentiles, LDL_values)
-    LDL_bar_link = get_image_download_link(LDL_bar_fig, "LDL_Bar_Only", "Download LDL Bar Only")
+    LDL_bar_link = get_plotly_html_download_link(LDL_bar_fig, "LDL_Bar_Only", "Download LDL Bar Only", "LDL-C (mg/dL)")
     st.markdown(LDL_bar_link, unsafe_allow_html=True)
 
 with col4:
     lpa_bar_fig = create_bar_only_chart("Lp(a)", lpa_percentiles, lpa_values)
-    lpa_bar_link = get_image_download_link(lpa_bar_fig, "Lpa_Bar_Only", "Download Lp(a) Bar Only")
+    lpa_bar_link = get_plotly_html_download_link(lpa_bar_fig, "Lpa_Bar_Only", "Download Lp(a) Bar Only", "Lp(a) (mg/dL)")
     st.markdown(lpa_bar_link, unsafe_allow_html=True)
 
-# Combined bars only download
-st.write("Or download all spectrum bars at once:")
-
-# Function to create a combined image of all bars only
-def create_combined_bars_image():
-    # Create fresh figures without patient markers
-    apoB_bar_fig = create_bar_only_chart("ApoB", percentiles, apoB_values)
-    nonHDL_bar_fig = create_bar_only_chart("Non-HDL-C", percentiles, nonHDL_values)
-    LDL_bar_fig = create_bar_only_chart("LDL-C", percentiles, LDL_values)
-    lpa_bar_fig = create_bar_only_chart("Lp(a)", lpa_percentiles, lpa_values)
-    
-    # Add titles to each figure
-    titles = ["ApoB (mg/dL)", "Non-HDL-C (mg/dL)", "LDL-C (mg/dL)", "Lp(a) (mg/dL)"]
-    figures = [apoB_bar_fig, nonHDL_bar_fig, LDL_bar_fig, lpa_bar_fig]
-    
-    for fig, title in zip(figures, titles):
-        fig.update_layout(
-            title={
-                'text': title,
-                'font': {'size': 24, 'family': 'Cormorant Garamond', 'color': '#2c3e50'},
-                'x': 0.5,
-                'xanchor': 'center',
-                'y': 0.93
-            },
-            margin=dict(l=40, r=40, t=50, b=50),  # Increased top margin for title
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)'
-        )
-    
-    # Fix any marker issues
-    for fig in figures:
-        for data in fig.data:
-            if hasattr(data, 'marker') and data.marker and hasattr(data.marker, 'line'):
-                data.marker.line.color = 'rgba(0,0,0,0)'  # Make marker borders transparent
-    
-    # Convert each figure to an image with higher resolution
-    apoB_img = Image.open(io.BytesIO(pio.to_image(apoB_bar_fig, format="png", scale=6, width=1200, height=200)))
-    nonHDL_img = Image.open(io.BytesIO(pio.to_image(nonHDL_bar_fig, format="png", scale=6, width=1200, height=200)))
-    LDL_img = Image.open(io.BytesIO(pio.to_image(LDL_bar_fig, format="png", scale=6, width=1200, height=200)))
-    lpa_img = Image.open(io.BytesIO(pio.to_image(lpa_bar_fig, format="png", scale=6, width=1200, height=200)))
-    
-    # Create a new image to hold all charts
-    total_height = apoB_img.height + nonHDL_img.height + LDL_img.height + lpa_img.height
-    combined_img = Image.new('RGBA', (apoB_img.width, total_height), (255, 255, 255, 0))
-    
-    # Paste each chart into the combined image
-    y_offset = 0
-    for img in [apoB_img, nonHDL_img, LDL_img, lpa_img]:
-        combined_img.paste(img, (0, y_offset), img)
-        y_offset += img.height
-    
-    # Convert to bytes for download
-    buffered = io.BytesIO()
-    combined_img.save(buffered, format="PNG")
-    img_str = base64.b64encode(buffered.getvalue()).decode()
-    
-    return img_str
-
-# Create combined bars only download button
-combined_bars_str = create_combined_bars_image()
-combined_bars_link = f'<a href="data:image/png;base64,{combined_bars_str}" download="All_Lipid_Bars_Only.png"><button style="padding: 6px 12px; background-color: #4CAF50; color: white; border: none; border-radius: 4px;">Download All Bars Only</button></a>'
-st.markdown(combined_bars_link, unsafe_allow_html=True)
+# Alternative approach for image download using Streamlit's download button
+st.markdown("---")
+st.header("Alternative Export Option")
+st.write("You can also take a screenshot of the charts directly from your browser for maximum quality.")
+st.write("1. Press the 'View fullscreen' button at the top-right of each chart")
+st.write("2. Use your browser's screenshot tool or press Print Screen")
+st.write("3. Paste the screenshot into your document or presentation software")
 
 # Disclaimer
 st.markdown("""
