@@ -1132,10 +1132,6 @@ except Exception as e:
     st.error(f"An error occurred when generating combined charts: {e}")
     st.info("Note: This feature requires the PIL/Pillow library. Make sure to add it to your requirements.txt or install with 'pip install Pillow'")
         
-        # Create download button
-        st.markdown(f'<a href="data:text/html;base64,{html_b64}" download="All_Lipid_Charts.html"><button style="padding: 6px 12px; background-color: #4CAF50; color: white; border: none; border-radius: 4px;">Download All Charts as HTML</button></a>', unsafe_allow_html=True)
-except Exception as e:
-    st.error(f"An error occurred when generating combined charts: {e}")
     
 # Add a fallback option
 st.markdown("""
