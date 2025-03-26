@@ -2,6 +2,7 @@ import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
+from PIL import Image
 
 st.set_page_config(page_title="Lipid Profile Percentile Visualizer", layout="wide")
 
