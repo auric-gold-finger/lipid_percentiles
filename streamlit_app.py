@@ -1101,30 +1101,90 @@ try:
             all_base64s.append(img_b64)
     
     if len(all_base64s) == 4:
-        # Create HTML with all images
-        # Create HTML with all images - enhanced for better transparency
+        # Create HTML with all images - styled to match the app
         html = """
-        <html style="background-color: transparent;">
+        <html>
         <head>
         <style>
-        html, body, div {
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Inter:wght@400;500&display=swap');
+
+        html, body {
             background-color: transparent !important;
             margin: 0;
-            padding: 0;
+            padding: 20px;
+            font-family: 'Inter', sans-serif;
+            color: #2c3e50;
         }
+
+        .chart-container {
+            background-color: transparent !important;
+            margin-bottom: 30px;
+        }
+
+        .chart-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        .chart-subtitle {
+            font-size: 0.8em;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
         img {
             width: 100%;
             height: auto;
             display: block;
             background-color: transparent !important;
         }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+
+        .disclaimer {
+            font-size: 12px;
+            color: #6c757d;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
         </style>
         </head>
-        <body style="background-color: transparent !important;">
+        <body>
+        <div class="header">
+            <h1>Lipid Profile Percentile Visualization</h1>
+        </div>
         """
-        for b64 in all_base64s:
-            html += f'<div style="background-color: transparent !important; margin-bottom: 10px;"><img src="data:image/png;base64,{b64}" style="width: 100%; height: auto;"></div>'
+
+        # Add each chart with its title
+        titles = ["ApoB", "Non-HDL-C", "LDL-C", "Lp(a)"]
+        for i, b64 in enumerate(all_base64s):
+            html += f"""
+            <div class="chart-container">
+                <div class="chart-title">{titles[i]} <span style="font-size:0.5em">(mg/dL)</span></div>
+                <img src="data:image/png;base64,{b64}">
+            </div>
+            """
+
+        # Add disclaimer at the bottom
         html += """
+        <div class="disclaimer">
+            <strong>Disclaimer:</strong> This visualization is for educational purposes only and should not be used for medical decision-making without consulting a healthcare professional.
+        </div>
         </body>
         </html>
         """
