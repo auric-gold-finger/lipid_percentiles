@@ -1102,12 +1102,28 @@ try:
     
     if len(all_base64s) == 4:
         # Create HTML with all images
+        # Create HTML with all images - enhanced for better transparency
         html = """
-        <html>
-        <body style="background-color: transparent;">
+        <html style="background-color: transparent;">
+        <head>
+        <style>
+        html, body, div {
+            background-color: transparent !important;
+            margin: 0;
+            padding: 0;
+        }
+        img {
+            width: 100%;
+            height: auto;
+            display: block;
+            background-color: transparent !important;
+        }
+        </style>
+        </head>
+        <body style="background-color: transparent !important;">
         """
         for b64 in all_base64s:
-            html += f'<div><img src="data:image/png;base64,{b64}" style="width: 100%; height: auto;"></div>'
+            html += f'<div style="background-color: transparent !important; margin-bottom: 10px;"><img src="data:image/png;base64,{b64}" style="width: 100%; height: auto;"></div>'
         html += """
         </body>
         </html>
