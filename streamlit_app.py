@@ -1079,7 +1079,13 @@ with col2:
 # All charts in one download
 st.write("Download all charts in a single image:")
     
-# Handle potential errors with a fallback
+# Add this to your imports at the top
+from PIL import Image
+
+# Then replace the "All charts in one download" section with this code
+
+st.write("Download all charts in a single PNG image with transparency:")
+
 try:
     # Create all four charts
     charts = [
@@ -1093,104 +1099,38 @@ try:
     for fig in charts:
         fig.update_layout(height=200, width=1000)
     
-    # Convert each to PNG and combine using HTML
-    all_base64s = []
+    # Convert each to PNG with transparency
+    png_images = []
     for fig in charts:
-        img_b64 = fig_to_base64(fig)
-        if img_b64:
-            all_base64s.append(img_b64)
+        img_bytes = pio.to_image(fig, format="png", scale=3, width=1000, height=200, 
+                                engine="kaleido", transparent=True)
+        img = Image.open(io.BytesIO(img_bytes))
+        png_images.append(img)
     
-    if len(all_base64s) == 4:
-        # Create HTML with all images - styled to match the app
-        html = """
-        <html>
-        <head>
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Inter:wght@400;500&display=swap');
-
-        html, body {
-            background-color: transparent !important;
-            margin: 0;
-            padding: 20px;
-            font-family: 'Inter', sans-serif;
-            color: #2c3e50;
-        }
-
-        .chart-container {
-            background-color: transparent !important;
-            margin-bottom: 30px;
-        }
-
-        .chart-title {
-            font-family: 'Cormorant Garamond', serif;
-            font-size: 2em;
-            font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 5px;
-            text-align: center;
-        }
-
-        .chart-subtitle {
-            font-size: 0.8em;
-            text-align: center;
-            margin-bottom: 10px;
-        }
-
-        img {
-            width: 100%;
-            height: auto;
-            display: block;
-            background-color: transparent !important;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        h1 {
-            font-family: 'Inter', sans-serif;
-            font-weight: 500;
-            color: #2c3e50;
-        }
-
-        .disclaimer {
-            font-size: 12px;
-            color: #6c757d;
-            background-color: #f8f9fa;
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 20px;
-        }
-        </style>
-        </head>
-        <body>
-        <div class="header">
-            <h1>Lipid Profile Percentile Visualization</h1>
-        </div>
-        """
-
-        # Add each chart with its title
-        titles = ["ApoB", "Non-HDL-C", "LDL-C", "Lp(a)"]
-        for i, b64 in enumerate(all_base64s):
-            html += f"""
-            <div class="chart-container">
-                <div class="chart-title">{titles[i]} <span style="font-size:0.5em">(mg/dL)</span></div>
-                <img src="data:image/png;base64,{b64}">
-            </div>
-            """
-
-        # Add disclaimer at the bottom
-        html += """
-        <div class="disclaimer">
-            <strong>Disclaimer:</strong> This visualization is for educational purposes only and should not be used for medical decision-making without consulting a healthcare professional.
-        </div>
-        </body>
-        </html>
-        """
-        
-        # Encode HTML as base64
-        html_b64 = base64.b64encode(html.encode()).decode()
+    # Calculate dimensions for combined image
+    total_height = sum(img.height for img in png_images)
+    max_width = max(img.width for img in png_images)
+    
+    # Create a new transparent image
+    combined_img = Image.new('RGBA', (max_width, total_height), (0, 0, 0, 0))
+    
+    # Paste each image
+    y_offset = 0
+    for img in png_images:
+        combined_img.paste(img, (0, y_offset), img)
+        y_offset += img.height
+    
+    # Convert to bytes for download
+    buffer = io.BytesIO()
+    combined_img.save(buffer, format="PNG")
+    img_bytes = buffer.getvalue()
+    
+    # Create download button
+    img_b64 = base64.b64encode(img_bytes).decode()
+    st.markdown(f'<a href="data:image/png;base64,{img_b64}" download="All_Lipid_Charts.png"><button style="padding: 6px 12px; background-color: #4CAF50; color: white; border: none; border-radius: 4px;">Download All Charts as PNG</button></a>', unsafe_allow_html=True)
+except Exception as e:
+    st.error(f"An error occurred when generating combined charts: {e}")
+    st.info("Note: This feature requires the PIL/Pillow library. Make sure to add it to your requirements.txt or install with 'pip install Pillow'")
         
         # Create download button
         st.markdown(f'<a href="data:text/html;base64,{html_b64}" download="All_Lipid_Charts.html"><button style="padding: 6px 12px; background-color: #4CAF50; color: white; border: none; border-radius: 4px;">Download All Charts as HTML</button></a>', unsafe_allow_html=True)
