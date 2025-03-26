@@ -1077,18 +1077,10 @@ with col2:
     if lpa_base64:
         st.markdown(f'<a href="data:image/png;base64,{lpa_base64}" download="Lpa_Chart.png"><button style="padding: 6px 12px; background-color: #4CAF50; color: white; border: none; border-radius: 4px;">Download Lp(a) Chart</button></a>', unsafe_allow_html=True)
 
-# All charts in one download
-st.write("Download all charts in a single image:")
-    
-# Add this to your imports at the top
-from PIL import Image
-
-# Then replace the "All charts in one download" section with this code
-
 st.write("Download all charts in a single PNG image with transparency:")
 
 try:
-    # Create all four charts
+    # Create all four charts with explicitly transparent backgrounds
     charts = [
         create_export_chart("ApoB", percentiles, apoB_values),
         create_export_chart("Non-HDL-C", percentiles, nonHDL_values),
@@ -1096,16 +1088,24 @@ try:
         create_export_chart("Lp(a)", lpa_percentiles, lpa_values)
     ]
     
-    # Set fixed height for each chart
+    # Ensure transparent background for all charts
     for fig in charts:
-        fig.update_layout(height=200, width=1000)
+        fig.update_layout(
+            height=200,
+            width=1000,
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)"
+        )
     
-    # Convert each to PNG with transparency
+    # Convert each to PNG
     png_images = []
     for fig in charts:
-        img_bytes = pio.to_image(fig, format="png", scale=3, width=1000, height=200, 
-                                engine="kaleido", transparent=True)
+        img_bytes = pio.to_image(fig, format="png", scale=3, width=1000, height=200, engine="kaleido")
         img = Image.open(io.BytesIO(img_bytes))
+        
+        # Ensure the image has alpha channel (transparency)
+        if img.mode != 'RGBA':
+            img = img.convert('RGBA')
         png_images.append(img)
     
     # Calculate dimensions for combined image
