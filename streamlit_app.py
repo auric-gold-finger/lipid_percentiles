@@ -1080,22 +1080,42 @@ with col2:
 st.write("Download all charts in a single PNG image with transparency:")
 
 try:
-    # Create all four charts with explicitly transparent backgrounds
-    charts = [
-        create_export_chart("ApoB", percentiles, apoB_values),
-        create_export_chart("Non-HDL-C", percentiles, nonHDL_values),
-        create_export_chart("LDL-C", percentiles, LDL_values),
-        create_export_chart("Lp(a)", lpa_percentiles, lpa_values)
-    ]
-    
-    # Ensure transparent background for all charts
-    for fig in charts:
+    # Function to create charts with proper fonts
+    def create_export_chart_with_fonts(title, percentiles, values, patient_value=None, key_percentiles=None):
+        # Create the chart using the existing function
+        fig = create_export_chart(title, percentiles, values, patient_value is not None, patient_value)
+        
+        # Set consistent fonts for all text elements
         fig.update_layout(
             height=200,
             width=1000,
             plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)"
+            paper_bgcolor="rgba(0,0,0,0)",
+            title={
+                'font': {'family': 'Cormorant Garamond, serif', 'size': 22, 'color': '#2c3e50'},
+            },
+            font={
+                'family': 'Avenir, Arial, sans-serif',
+            }
         )
+        
+        # Update all annotations to use the correct fonts
+        for annotation in fig.layout.annotations:
+            # Check if it's a percentile label (below the line)
+            if "sup" in annotation.text:
+                annotation.font.family = "Cormorant Garamond, serif"
+            else:
+                annotation.font.family = "Avenir, Arial, sans-serif"
+                
+        return fig
+    
+    # Create all four charts with explicitly correct fonts
+    charts = [
+        create_export_chart_with_fonts("ApoB", percentiles, apoB_values, apoB),
+        create_export_chart_with_fonts("Non-HDL-C", percentiles, nonHDL_values, nonHDL),
+        create_export_chart_with_fonts("LDL-C", percentiles, LDL_values, LDL),
+        create_export_chart_with_fonts("Lp(a)", lpa_percentiles, lpa_values, lpa)
+    ]
     
     # Convert each to PNG
     png_images = []
@@ -1132,7 +1152,6 @@ try:
 except Exception as e:
     st.error(f"An error occurred when generating combined charts: {e}")
     st.info("Note: This feature requires the PIL/Pillow library. Make sure to add it to your requirements.txt or install with 'pip install Pillow'")
-        
     
 # Add a fallback option
 st.markdown("""
